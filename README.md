@@ -28,3 +28,5 @@ Now I have no clue the actual look of the totem, but the running concept is to h
  - [LCD Panel (16x2)](http://wiki.sunfounder.cc/index.php?title=LCD1602_Module)
  - [Addressable LED Matrix (32x8)](https://www.btf-lighting.com/products/ws2812b-panel-screen-8-8-16-16-8-32-pixel-256-pixels-digital-flexible-led-programmed-individually-addressable-full-color-dc5v?variant=20203594612836)
 
+## Why is this project so sloppy?
+Yes, I get it.  The parts I've created in Fritzing look rushed and incomplete, the prototype is a little slopyy, etc.  I'm learning.
