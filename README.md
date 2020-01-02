@@ -13,7 +13,7 @@ The idea is to create a totem that meets festival height requirements, uses an a
 Now I have no clue the actual look of the totem, but the running concept is to have a character that encourages people to generate enough noise to get the meter to light up red.
 
 ## Prototype Layout
-![Image of prototype](/images/yaktocat.png)
+![Image of prototype](/images/diagram.PNG)
 
 ## Parts List
 
