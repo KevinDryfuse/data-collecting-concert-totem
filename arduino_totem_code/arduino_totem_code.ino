@@ -1,11 +1,11 @@
-#include <SPI.h>
-#include <SD.h>
-#include <IRremote.h>
-#include <LiquidCrystal.h>
+#include "SPI.h"
+#include "SD.h"
+#include "IRremote.h"
+#include "LiquidCrystal.h"
 #include "TinyGPS++.h"
-#include <Wire.h>
-#include <DS3231.h>
-#include <Adafruit_NeoPixel.h>
+#include "Wire.h"
+#include "DS3231.h"
+#include "Adafruit_NeoPixel.h"
 
 // LCD
 LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
@@ -86,61 +86,8 @@ void setup_sd_logging() {
       Serial.println("Wiring is correct and a card is present.");
     }
 
-// This is great and all when debugging SD card/connectivity issues, but it will probably need to be pulled as this moves towards production
-//  
-//    // print the type of card
-//    Serial.print("\nCard type: ");
-//    switch (card.type()) {
-//      case SD_CARD_TYPE_SD1:
-//        Serial.println("SD1");
-//        break;  while (!Serial) {
-//      ; // wait for serial port to connect. Needed for native USB port only
-//    }
-//      case SD_CARD_TYPE_SD2:
-//        Serial.println("SD2");
-//        break;
-//      case SD_CARD_TYPE_SDHC:
-//        Serial.println("SDHC");
-//        break;
-//      default:
-//        Serial.println("Unknown");
-//    }
-//  
-//    // Now we will try to open the 'volume'/'partition' - it should be FAT16 or FAT32
-//    if (!volume.init(card)) {
-//      Serial.println("Could not find FAT16/FAT32 partition.\nMake sure you've formatted the card");
-//      return;
-//    }
-//  
-//    // print the type and size of the first FAT-type volume
-//    uint32_t volumesize;
-//    Serial.print("\nVolume type is FAT");
-//    Serial.println(volume.fatType(), DEC);
-//    Serial.println();
-//  
-//    volumesize = volume.blocksPerCluster();    // clusters are collections of blocks
-//    volumesize *= volume.clusterCount();       // we'll have a lot of clusters
-//    volumesize *= 512;                            // SD card blocks are always 512 bytes
-//    Serial.print("Volume size (bytes): ");
-//    Serial.println(volumesize);
-//    Serial.print("Volume size (Kbytes): ");
-//    volumesize /= 1024;
-//    Serial.println(volumesize);
-//    Serial.print("Volume size (Mbytes): ");
-//    volumesize /= 1024;
-//    Serial.println(volumesize);
-//  
-//    Serial.println("\nFiles found on the card (name, date and size in bytes): ");
-//    root.openRoot(volume);
-//  
-//    // list all files in the card with date and size
-//    root.ls(LS_R | LS_DATE | LS_SIZE);
-//  
-//    if (SD.exists("logging.txt")) {
-//      Serial.println("logging.txt exists.");
-//    } else {
-//      Serial.println("logging.txt doesn't exist.");
-//    }
+    // sd_card_debug()
+
 }
 
 void loop() {
@@ -623,4 +570,64 @@ void get_board(int board[ROWS][COLS])
     board[0][2] = 2;
     board[0][1] = 1;
     board[0][0] = 0;
+}
+
+void sd_card_debug() {
+
+  // This is great and all when debugging SD card/connectivity issues, but it will probably need to be pulled as this moves towards production
+  
+  //   // print the type of card
+  //   Serial.print("\nCard type: ");
+  //   switch (card.type()) {
+  //     case SD_CARD_TYPE_SD1:
+  //       Serial.println("SD1");
+  //       break;  while (!Serial) {
+  //     ; // wait for serial port to connect. Needed for native USB port only
+  //   }
+  //     case SD_CARD_TYPE_SD2:
+  //       Serial.println("SD2");
+  //       break;
+  //     case SD_CARD_TYPE_SDHC:
+  //       Serial.println("SDHC");
+  //       break;
+  //     default:
+  //       Serial.println("Unknown");
+  //   }
+  
+  //   // Now we will try to open the 'volume'/'partition' - it should be FAT16 or FAT32
+  //   if (!volume.init(card)) {
+  //     Serial.println("Could not find FAT16/FAT32 partition.\nMake sure you've formatted the card");
+  //     return;
+  //   }
+  
+  //   // print the type and size of the first FAT-type volume
+  //   uint32_t volumesize;
+  //   Serial.print("\nVolume type is FAT");
+  //   Serial.println(volume.fatType(), DEC);
+  //   Serial.println();
+  
+  //   volumesize = volume.blocksPerCluster();    // clusters are collections of blocks
+  //   volumesize *= volume.clusterCount();       // we'll have a lot of clusters
+  //   volumesize *= 512;                            // SD card blocks are always 512 bytes
+  //   Serial.print("Volume size (bytes): ");
+  //   Serial.println(volumesize);
+  //   Serial.print("Volume size (Kbytes): ");
+  //   volumesize /= 1024;
+  //   Serial.println(volumesize);
+  //   Serial.print("Volume size (Mbytes): ");
+  //   volumesize /= 1024;
+  //   Serial.println(volumesize);
+  
+  //   Serial.println("\nFiles found on the card (name, date and size in bytes): ");
+  //   root.openRoot(volume);
+  
+  //   // list all files in the card with date and size
+  //   root.ls(LS_R | LS_DATE | LS_SIZE);
+  
+  //   if (SD.exists("logging.txt")) {
+  //     Serial.println("logging.txt exists.");
+  //   } else {
+  //     Serial.println("logging.txt doesn't exist.");
+  //   }
+
 }
