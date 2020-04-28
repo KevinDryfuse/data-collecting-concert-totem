@@ -1,11 +1,19 @@
-#include "SPI.h"
-#include "SD.h"
-#include "IRremote.h"
-#include "LiquidCrystal.h"
-#include "TinyGPS++.h"
-#include "Wire.h"
-#include "DS3231.h"
-#include "Adafruit_NeoPixel.h"
+#include <SPI.h>
+#include <SD.h>
+#include <IRremote.h>
+#include <LiquidCrystal.h>
+#include <TinyGPS++.h>
+#include <Wire.h>
+#include <DS3231.h>
+#include <Adafruit_NeoPixel.h>
+
+// General
+#define DELAY_TIME 50
+#define WRITE_FREQUENCY 1000
+int write_delay_counter = 0;
+float max_db = 0.0;
+float db_total = 0.0;
+int loop_counter = 0;
 
 // LCD
 LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
@@ -23,7 +31,8 @@ File myFile;
 
 const int chipSelect = 10;
 #define SoundSensorPin A1  //this pin read the analog voltage from the sound level meter
-#define VREF  5.0  //voltage on AREF pin,default:operating voltage
+#define VREF 5.0  //voltage on AREF pin,default:operating voltage
+#define calibration 1.00
 
 // GPS
 double latitude,longitude;
@@ -37,8 +46,8 @@ RTCDateTime dt;
 #define LED_PIN 6
 #define LED_COUNT 256
 #define BRIGHTNESS 5
-#define MAX_DB 120
-#define MIN_DB 70
+#define MAX_DB 90
+#define MIN_DB 45
 #define ROWS 32
 #define COLS 8
 Adafruit_NeoPixel strip((ROWS * COLS), LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -55,9 +64,10 @@ void setup() {
   // Print a startup message to the LCD.
   lcd.print("BONNAROO!");
 
-  setup_sd_logging();
-  
+//  setup_sd_logging();
+  Serial.println("Initializaing Real Time Clock");
   clock.begin();
+  Serial.println("Real Time Clock up and running!");
 
   strip.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
   strip.show(); // Turn OFF all pixels ASAP
@@ -66,123 +76,153 @@ void setup() {
 
 void setup_sd_logging() {
   
-    Serial.print("\nInitializing SD card...");
-
-    // Set the actual ouput pin
-    pinMode(53, OUTPUT);
-
-    // Set a fake pin for our SD card
-    SD.begin(10);
-  
-    // we'll use the initialization code from the utility libraries
-    // since we're just testing if the card is working!
-    if (!card.init(SPI_HALF_SPEED, chipSelect)) {
-      Serial.println("initialization failed. Things to check:");
-      Serial.println("* is a card inserted?");
-      Serial.println("* is your wiring correct?");
-      Serial.println("* did you change the chipSelect pin to match your shield or module?");
-      return;
-    } else {
-      Serial.println("Wiring is correct and a card is present.");
-    }
-
-    // sd_card_debug()
-
+//    Serial.print("\nInitializing SD card...");
+//
+//    // Set the actual ouput pin
+//    pinMode(53, OUTPUT);
+//
+//    // Set a fake pin for our SD card
+//    SD.begin(10);
+//  
+//    // we'll use the initialization code from the utility libraries
+//    // since we're just testing if the card is working!
+//    if (!card.init(SPI_HALF_SPEED, chipSelect)) {
+//      Serial.println("initialization failed. Things to check:");
+//      Serial.println("* is a card inserted?");
+//      Serial.println("* is your wiring correct?");
+//      Serial.println("* did you change the chipSelect pin to match your shield or module?");
+//      return;
+//    } else {
+//      Serial.println("Wiring is correct and a card is present.");
+//    }
 }
 
 void loop() {
+
+  int triggered = 0;
  
   while (Serial1.available() > 0)
     gps.encode(Serial1.read());
     
   if (gps.location.isUpdated()) {
-
-      Serial.println(gps.location.lat(), 6); // Latitude in degrees (double)
-      Serial.println(gps.location.lng(), 6); // Longitude in degrees (double)
-      
-      latitude = gps.location.lat();
-      longitude =  gps.location.lng();
-      Serial.print("Lat: ");
-      Serial.print(latitude);
-      Serial.print(" Lon: ");
-      Serial.println(longitude);
-      
-   }
-   else if (gps.date.isUpdated() or gps.time.isUpdated()) {
-       clock.setDateTime(gps.date.year(), gps.date.month(), gps.date.day(), gps.time.hour(), gps.time.minute(), gps.time.second());
-       dt = clock.getDateTime();
-       char x[19];
-       sprintf(x,"%04u/%02u/%02u %02u:%02u:%02u",dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second);
-       Serial.println(x);   
-   }
+    latitude = gps.location.lat();
+    longitude =  gps.location.lng();
+  }
+  else if (gps.date.isUpdated() or gps.time.isUpdated()) {
+    clock.setDateTime(gps.date.year(), gps.date.month(), gps.date.day(), gps.time.hour(), gps.time.minute(), gps.time.second());
+  }
 
   float voltageValue,dbValue;
   voltageValue = analogRead(SoundSensorPin) / 1024.0 * VREF;
-  dbValue = voltageValue * 50.0;  //convert voltage to decibel value
+  dbValue = voltageValue * 50.0 * calibration;  //convert voltage to decibel value
   
   char dateBuffer[19];
   dt = clock.getDateTime();
   sprintf(dateBuffer,"%04u/%02u/%02u %02u:%02u:%02u",dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second);
-  //Serial.println(dateBuffer);
-  
-  lcd.setCursor(0, 0);
-  lcd.print("                ");
-  lcd.setCursor(0, 0);
-  lcd.print((String) dbValue + " dBA");
-  myFile = SD.open("logging.txt", FILE_WRITE);
-  if (irrecv.decode(&results)) {
-    Serial.println(results.value);
-    lcd.setCursor(0, 1);
-    lcd.print("                ");
-    lcd.setCursor(0, 1);
-    lcd.print(results.value);
-    
-    myFile.print("B,");
-    myFile.print(latitude, 8);
-    myFile.print(",");
-    myFile.print(longitude, 8);
-    myFile.print(",");
-    myFile.print(dateBuffer);
-    myFile.print(",");
-    myFile.println(results.value);
-    irrecv.resume();
-  }
-  myFile.print("A,");
-  myFile.print(latitude, 8);
-  myFile.print(",");
-  myFile.print(longitude, 8);
-  myFile.print(",");
-  myFile.print(dateBuffer);
-  myFile.print(",");
-  myFile.println(dbValue,1);
-  myFile.close();
 
- 
   int board[ROWS][COLS];
   get_board(board);
   display_sound(board, dbValue);
 
-  smartDelay(75);
+  write_delay_counter += 1;
+  smartDelay(DELAY_TIME, dateBuffer, dbValue);
+}
+
+// free RAM check for debugging. SRAM for ATmega328p = 2048Kb.
+int availableMemory() {
+    // Use 1024 with ATmega168
+    int size = 2048;
+    byte *buf;
+    while ((buf = (byte *) malloc(--size)) == NULL);
+        free(buf);
+    return size;
+}
+
+String pad_with_spaces(String output_to_pad) {
+  String empty_screen = "                ";
+  int whitespace_size = empty_screen.length() - output_to_pad.length();
+  return output_to_pad + empty_screen.substring(0, whitespace_size);
 }
 
 // This custom version of delay() ensures that the gps object
 // is being "fed".
-static void smartDelay(unsigned long ms)
-{
+static void smartDelay(unsigned long ms, char dateBuffer[], float dbValue)
+{  
   unsigned long start = millis();
   do 
   {
     while (Serial1.available())
       gps.encode(Serial1.read());
+      if (irrecv.decode(&results)) {
+          lcd.setCursor(0, 1);
+     
+          Serial.print("B,");
+          Serial.print(latitude, 8);
+          Serial.print(",");
+          Serial.print(longitude, 8);
+          Serial.print(",");
+          Serial.print(dateBuffer);
+          Serial.print(",");
+          Serial.println(results.value);
+          
+//          myFile = SD.open("logging.txt", FILE_WRITE);
+//          myFile.print("B,");
+//          myFile.print(latitude, 8);
+//          myFile.print(",");
+//          myFile.print(longitude, 8);
+//          myFile.print(",");
+//          myFile.print(dateBuffer);
+//          myFile.print(",");
+//          myFile.println(results.value);
+//          myFile.close();
+          irrecv.resume();
+    }
+
+    if (dbValue > max_db) {
+      max_db = dbValue;
+    }
+
+    db_total += dbValue;
+    loop_counter += 1;
+    
+    if (write_delay_counter * DELAY_TIME >= WRITE_FREQUENCY) {
+
+      float average_db = db_total / loop_counter;
+
+      String avg_db = (String) average_db;
+      String LAT = (String) latitude; 
+      String LON = (String) longitude;
+
+      Serial.println("A," + LAT + "," + LON + "," + dateBuffer + "," + avg_db);
+  
+      String output = (String) max_db + " dBA";
+      lcd.setCursor(0, 0);
+      lcd.print(pad_with_spaces(output));
+
+//      myFile = SD.open("logging.txt", FILE_WRITE);
+////      myFile.print("A,");
+////      myFile.print(latitude, 8);
+////      myFile.print(",");
+////      myFile.print(longitude, 8);
+////      myFile.print(",");
+////      myFile.print(dateBuffer);
+////     myFile.print(",");
+////      myFile.println(average_db,1);
+//      myFile.println("A," + LAT + "," + LON + "," + dateBuffer + "," + avg_db);
+//      myFile.close();  
+  
+      write_delay_counter = 0;
+      db_total = 0;
+      max_db = 0;
+      loop_counter = 0;
+  }
+    
   } while (millis() - start < ms);
 }
 
 void display_sound(int board[ROWS][COLS], float dbValue) {
   strip.clear();
-  strip.show();
-  
-  //Serial.println("DB Value: " + (String) dbValue);
-
+ 
   int height = get_height(dbValue);
   
   uint32_t colors[ROWS];
@@ -570,64 +610,4 @@ void get_board(int board[ROWS][COLS])
     board[0][2] = 2;
     board[0][1] = 1;
     board[0][0] = 0;
-}
-
-void sd_card_debug() {
-
-  // This is great and all when debugging SD card/connectivity issues, but it will probably need to be pulled as this moves towards production
-  
-  //   // print the type of card
-  //   Serial.print("\nCard type: ");
-  //   switch (card.type()) {
-  //     case SD_CARD_TYPE_SD1:
-  //       Serial.println("SD1");
-  //       break;  while (!Serial) {
-  //     ; // wait for serial port to connect. Needed for native USB port only
-  //   }
-  //     case SD_CARD_TYPE_SD2:
-  //       Serial.println("SD2");
-  //       break;
-  //     case SD_CARD_TYPE_SDHC:
-  //       Serial.println("SDHC");
-  //       break;
-  //     default:
-  //       Serial.println("Unknown");
-  //   }
-  
-  //   // Now we will try to open the 'volume'/'partition' - it should be FAT16 or FAT32
-  //   if (!volume.init(card)) {
-  //     Serial.println("Could not find FAT16/FAT32 partition.\nMake sure you've formatted the card");
-  //     return;
-  //   }
-  
-  //   // print the type and size of the first FAT-type volume
-  //   uint32_t volumesize;
-  //   Serial.print("\nVolume type is FAT");
-  //   Serial.println(volume.fatType(), DEC);
-  //   Serial.println();
-  
-  //   volumesize = volume.blocksPerCluster();    // clusters are collections of blocks
-  //   volumesize *= volume.clusterCount();       // we'll have a lot of clusters
-  //   volumesize *= 512;                            // SD card blocks are always 512 bytes
-  //   Serial.print("Volume size (bytes): ");
-  //   Serial.println(volumesize);
-  //   Serial.print("Volume size (Kbytes): ");
-  //   volumesize /= 1024;
-  //   Serial.println(volumesize);
-  //   Serial.print("Volume size (Mbytes): ");
-  //   volumesize /= 1024;
-  //   Serial.println(volumesize);
-  
-  //   Serial.println("\nFiles found on the card (name, date and size in bytes): ");
-  //   root.openRoot(volume);
-  
-  //   // list all files in the card with date and size
-  //   root.ls(LS_R | LS_DATE | LS_SIZE);
-  
-  //   if (SD.exists("logging.txt")) {
-  //     Serial.println("logging.txt exists.");
-  //   } else {
-  //     Serial.println("logging.txt doesn't exist.");
-  //   }
-
 }
