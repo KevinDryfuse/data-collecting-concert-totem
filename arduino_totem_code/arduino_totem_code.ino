@@ -6,6 +6,7 @@
 #include <DS3231.h>
 #include <Adafruit_NeoPixel.h>
 #include <Keypad.h>
+#include <EEPROM.h>
 
 // General
 #define DELAY_TIME 50
@@ -63,10 +64,16 @@ byte colPins[KEY_COLS] = {31,33,35,37}; //connect to the column pinouts of the k
 //initialize an instance of class NewKeypad
 Keypad customKeypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, KEY_ROWS, KEY_COLS); 
 
+
+//EEPROM
+#define LOWER_DB_LIMIT_ADDR 69
+#define UPPER_DB_LIMIT_ADDR 70
+#define CALIBRATION_ADDR 71
+
 void setup() {
   Serial.begin(9600);
   Serial1.begin(9600);
-  
+
   // set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
   // Print a startup message to the LCD.
@@ -76,6 +83,8 @@ void setup() {
   Serial.println("Initializaing Real Time Clock");
   clock.begin();
   Serial.println("Real Time Clock up and running!");
+
+  read_from_eeprom();
 
   strip.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
   strip.show(); // Turn OFF all pixels ASAP
@@ -168,32 +177,38 @@ static void smartDelay(unsigned long ms, char dateBuffer[], float dbValue)
       switch(customKey){
         case '1': 
           Serial.println("CALIBRATE UP"); 
-          calibration += 0.05;
+          calibration += 0.01;
+          EEPROM.write(CALIBRATION_ADDR, calibration * 100);
           lcd.print(pad_with_spaces((String) "ADJ: " + calibration));
           break;     
         case '4': 
           Serial.println("CALIBRATE DOWN");
-          calibration -= 0.05; 
+          calibration -= 0.01;
+          EEPROM.write(CALIBRATION_ADDR, calibration * 100);
           lcd.print(pad_with_spaces((String) "ADJ: " + calibration));
           break;
         case '3': 
           Serial.println("MAX DB UP");
           upper_db_limit += 1;
+          EEPROM.write(UPPER_DB_LIMIT_ADDR, upper_db_limit);
           lcd.print(pad_with_spaces((String) "MAX DB: " + upper_db_limit));
           break;
         case '6': 
           Serial.println("MAX DB DOWN");  
           upper_db_limit -= 1;
+          EEPROM.write(UPPER_DB_LIMIT_ADDR, upper_db_limit);
           lcd.print(pad_with_spaces((String) "MAX DB: " + upper_db_limit));
           break;
         case '2': 
           Serial.println("MIN DB UP");
           lower_db_limit += 1;
+          EEPROM.write(LOWER_DB_LIMIT_ADDR, lower_db_limit);
           lcd.print(pad_with_spaces((String) "MIN DB: " + lower_db_limit));
           break;
         case '5': 
           Serial.println("MIN DB DOWN");  
           lower_db_limit -= 1;
+          EEPROM.write(LOWER_DB_LIMIT_ADDR, lower_db_limit);
           lcd.print(pad_with_spaces((String) "MIN DB: " + lower_db_limit));
           break; 
         default: 
@@ -636,4 +651,42 @@ void get_board(int board[ROWS][COLS])
     board[0][2] = 2;
     board[0][1] = 1;
     board[0][0] = 0;
+}
+
+void read_from_eeprom() {
+
+  Serial.println("Searching memory for matrix lower limit value.");
+  if (EEPROM.read(LOWER_DB_LIMIT_ADDR) >= 255) {
+    Serial.print("Value found! Using value from memory: ");
+    lower_db_limit = EEPROM.read(LOWER_DB_LIMIT_ADDR);
+    Serial.println(lower_db_limit);
+  }
+  else {
+    Serial.print("No value found in memory, using default value: ");
+    Serial.println(lower_db_limit);
+  }
+
+  Serial.println("Searching memory for matrix upper limit value.");
+  if (EEPROM.read(UPPER_DB_LIMIT_ADDR) >= 255) {
+    Serial.print("Value found! Using value from memory: ");
+    upper_db_limit = EEPROM.read(UPPER_DB_LIMIT_ADDR);
+    Serial.println(upper_db_limit);
+  }
+  else {
+    Serial.print("No value found in memory, using default value: ");
+    Serial.println(upper_db_limit);
+  }
+  
+  Serial.println("Searching memory for sound level calibration value.");
+  if (EEPROM.read(CALIBRATION_ADDR) <= 255 and EEPROM.read(CALIBRATION_ADDR) >= 50) {
+    Serial.print("Value found! Using value from memory: ");
+    calibration = (float) EEPROM.read(CALIBRATION_ADDR) / 100;
+    Serial.println(calibration);
+  }
+  else {
+    Serial.print("No value found in memory, using default value: ");
+    Serial.println(calibration);
+  }
+
+  Serial.println("Memory read complete, have a nice day.");
 }
