@@ -8,9 +8,9 @@ Because I can't just build a "normal" festival totem, I wanted to build somethin
 
 # So how does that translate into reality?
 
-The idea is to create a totem that meets festival height requirements, uses an addressable LED matrix to show ambient noise levels, allow the LED matrix to be controlled with a remote (change colors, display messages, re-calibrate, etc), capture data (GPS coordinates, date-time, decibel levels, remote key presses, etc) to an SD card.
+The idea is to create a totem that meets festival height requirements, uses an addressable LED matrix to show ambient noise levels, allow the LED matrix to be controlled with a number pad (change colors, display messages, re-calibrate, etc), capture data (GPS coordinates, date-time, decibel levels, remote key presses, etc) to an SD card.
 
-Now I have no clue the actual look of the totem, but the running concept is to have a character that encourages people to generate enough noise to get the meter to light up red.
+Now I have no clue the actual look of the totem, but the running concept is to have a something that encourages people to generate enough noise to get the meter to light up red.
 
 ## Prototype Layout
 ![Image of prototype](/images/diagram.PNG)
@@ -23,10 +23,13 @@ Now I have no clue the actual look of the totem, but the running concept is to h
  - [GPS Module](https://www.dfrobot.com/product-1302.html)
  - [SD Card Logging Shield](https://www.velleman.eu/products/view/?id=435522)
  - 10kΩ Potentiometer
+ - 330Ω Resistor
  - [RF Receiver](https://arduinomodules.info/ky-022-infrared-receiver-module/)
  - [Real Time Clock](https://create.arduino.cc/projecthub/MisterBotBreak/how-to-use-a-real-time-clock-module-ds3231-bc90fe)
  - [LCD Panel (16x2)](http://wiki.sunfounder.cc/index.php?title=LCD1602_Module)
- - [Addressable LED Matrix (32x8)](https://www.btf-lighting.com/products/ws2812b-panel-screen-8-8-16-16-8-32-pixel-256-pixels-digital-flexible-led-programmed-individually-addressable-full-color-dc5v?variant=20203594612836)
+ - [Addressable LED Matrix (32x8) x2](https://www.btf-lighting.com/products/ws2812b-panel-screen-8-8-16-16-8-32-pixel-256-pixels-digital-flexible-led-programmed-individually-addressable-full-color-dc5v?variant=20203594612836)
+ - [Power supply module](https://tinkersphere.com/power/379-breadboard-power-supply-module-33v-5v-arduino-raspberry-pi-compatible.html)
+ - [Membrane Switch Module (4x4)](https://tinkersphere.com/buttons-switches/762-adhesive-keypad-membrane-matrix-3x4.html)
 
 ## Why is this project so sloppy?
 Yes, I get it.  The parts I've created in Fritzing look rushed and incomplete, the prototype is a little slopyy, etc.  I'm learning.
