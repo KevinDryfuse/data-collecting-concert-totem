@@ -1,11 +1,11 @@
 #include <SPI.h>
 #include <SD.h>
-#include <IRremote.h>
 #include <LiquidCrystal.h>
 #include <TinyGPS++.h>
 #include <Wire.h>
 #include <DS3231.h>
 #include <Adafruit_NeoPixel.h>
+#include <Keypad.h>
 
 // General
 #define DELAY_TIME 50
@@ -18,11 +18,6 @@ int loop_counter = 0;
 // LCD
 LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
 
-// IR Reciever
-int RECV_PIN = 2;
-IRrecv irrecv(RECV_PIN);
-decode_results results;
-
 // SD Utility:
 Sd2Card card;
 SdVolume volume;
@@ -32,7 +27,7 @@ File myFile;
 const int chipSelect = 10;
 #define SoundSensorPin A1  //this pin read the analog voltage from the sound level meter
 #define VREF 5.0  //voltage on AREF pin,default:operating voltage
-#define calibration 1.00
+float calibration = 1.00;
 
 // GPS
 double latitude,longitude;
@@ -46,25 +41,38 @@ RTCDateTime dt;
 #define LED_PIN 6
 #define LED_COUNT 256
 #define BRIGHTNESS 5
-#define MAX_DB 90
-#define MIN_DB 45
+int upper_db_limit = 90;
+int lower_db_limit = 45;
 #define ROWS 32
 #define COLS 8
 Adafruit_NeoPixel strip((ROWS * COLS), LED_PIN, NEO_GRB + NEO_KHZ800);
 
+// Keypad
+const byte KEY_ROWS = 4; //four rows
+const byte KEY_COLS = 4; //four columns
+//define the cymbols on the buttons of the keypads
+char hexaKeys[KEY_ROWS][KEY_COLS] = {
+  {'1','2','3','A'},
+  {'4','5','6','B'},
+  {'7','8','9','C'},
+  {'*','0','#','D'}
+};
+byte rowPins[KEY_ROWS] = {23,25,27,29}; //connect to the row pinouts of the keypad
+byte colPins[KEY_COLS] = {31,33,35,37}; //connect to the column pinouts of the keypad
+
+//initialize an instance of class NewKeypad
+Keypad customKeypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, KEY_ROWS, KEY_COLS); 
+
 void setup() {
   Serial.begin(9600);
   Serial1.begin(9600);
-
-  // Start the IR Receiver
-  irrecv.enableIRIn(); 
   
   // set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
   // Print a startup message to the LCD.
   lcd.print("BONNAROO!");
 
-//  setup_sd_logging();
+  //  setup_sd_logging();
   Serial.println("Initializaing Real Time Clock");
   clock.begin();
   Serial.println("Real Time Clock up and running!");
@@ -114,7 +122,7 @@ void loop() {
 
   float voltageValue,dbValue;
   voltageValue = analogRead(SoundSensorPin) / 1024.0 * VREF;
-  dbValue = voltageValue * 50.0 * calibration;  //convert voltage to decibel value
+  dbValue = (voltageValue * calibration) * 50.0;  //convert voltage to decibel value
   
   char dateBuffer[19];
   dt = clock.getDateTime();
@@ -153,29 +161,44 @@ static void smartDelay(unsigned long ms, char dateBuffer[], float dbValue)
   {
     while (Serial1.available())
       gps.encode(Serial1.read());
-      if (irrecv.decode(&results)) {
-          lcd.setCursor(0, 1);
-     
-          Serial.print("B,");
-          Serial.print(latitude, 8);
-          Serial.print(",");
-          Serial.print(longitude, 8);
-          Serial.print(",");
-          Serial.print(dateBuffer);
-          Serial.print(",");
-          Serial.println(results.value);
-          
-//          myFile = SD.open("logging.txt", FILE_WRITE);
-//          myFile.print("B,");
-//          myFile.print(latitude, 8);
-//          myFile.print(",");
-//          myFile.print(longitude, 8);
-//          myFile.print(",");
-//          myFile.print(dateBuffer);
-//          myFile.print(",");
-//          myFile.println(results.value);
-//          myFile.close();
-          irrecv.resume();
+
+    char customKey = customKeypad.getKey();
+    if (customKey){
+      lcd.setCursor(0, 1);
+      switch(customKey){
+        case '1': 
+          Serial.println("CALIBRATE UP"); 
+          calibration += 0.05;
+          lcd.print(pad_with_spaces((String) "ADJ: " + calibration));
+          break;     
+        case '4': 
+          Serial.println("CALIBRATE DOWN");
+          calibration -= 0.05; 
+          lcd.print(pad_with_spaces((String) "ADJ: " + calibration));
+          break;
+        case '3': 
+          Serial.println("MAX DB UP");
+          upper_db_limit += 1;
+          lcd.print(pad_with_spaces((String) "MAX DB: " + upper_db_limit));
+          break;
+        case '6': 
+          Serial.println("MAX DB DOWN");  
+          upper_db_limit -= 1;
+          lcd.print(pad_with_spaces((String) "MAX DB: " + upper_db_limit));
+          break;
+        case '2': 
+          Serial.println("MIN DB UP");
+          lower_db_limit += 1;
+          lcd.print(pad_with_spaces((String) "MIN DB: " + lower_db_limit));
+          break;
+        case '5': 
+          Serial.println("MIN DB DOWN");  
+          lower_db_limit -= 1;
+          lcd.print(pad_with_spaces((String) "MIN DB: " + lower_db_limit));
+          break; 
+        default: 
+          Serial.println(customKey);
+      }
     }
 
     if (dbValue > max_db) {
@@ -197,6 +220,9 @@ static void smartDelay(unsigned long ms, char dateBuffer[], float dbValue)
   
       String output = (String) max_db + " dBA";
       lcd.setCursor(0, 0);
+      lcd.print(pad_with_spaces(output));
+      lcd.setCursor(0, 1);
+      output = (String) LAT + ", " + LON;
       lcd.print(pad_with_spaces(output));
 
 //      myFile = SD.open("logging.txt", FILE_WRITE);
@@ -275,14 +301,14 @@ int set_cap(int board[ROWS][COLS], int height, uint32_t colors[ROWS]) {
 
 int get_height(float dbValue) {
   
-  if (dbValue < MIN_DB) {
-    dbValue = MIN_DB;
+  if (dbValue < lower_db_limit) {
+    dbValue = lower_db_limit;
   }  
-  else if (dbValue > MAX_DB) {
-    dbValue = MAX_DB;
+  else if (dbValue > upper_db_limit) {
+    dbValue = upper_db_limit;
   }
   
-  int height = round((dbValue - (float) MIN_DB)*( (float) ROWS /( (float) MAX_DB - (float) MIN_DB)));
+  int height = round((dbValue - (float) lower_db_limit)*( (float) ROWS /( (float) upper_db_limit - (float) lower_db_limit)));
   return height;
 }
 
