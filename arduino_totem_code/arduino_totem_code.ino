@@ -163,8 +163,7 @@ String pad_with_spaces(String output_to_pad) {
 
 // This custom version of delay() ensures that the gps object
 // is being "fed".
-static void smartDelay(unsigned long ms, char dateBuffer[], float dbValue)
-{  
+static void smartDelay(unsigned long ms, char dateBuffer[], float dbValue) {  
   unsigned long start = millis();
   do 
   {
@@ -210,7 +209,11 @@ static void smartDelay(unsigned long ms, char dateBuffer[], float dbValue)
           lower_db_limit -= 1;
           EEPROM.write(LOWER_DB_LIMIT_ADDR, lower_db_limit);
           lcd.print(pad_with_spaces((String) "MIN DB: " + lower_db_limit));
-          break; 
+          break;
+        case 'A':
+          Serial.println("Flash them police lights!");  
+          police_lights();
+          break;
         default: 
           Serial.println(customKey);
       }
@@ -261,6 +264,26 @@ static void smartDelay(unsigned long ms, char dateBuffer[], float dbValue)
   } while (millis() - start < ms);
 }
 
+void police_lights() {
+  uint32_t red = strip.Color(255, 0, 0);
+  uint32_t blue = strip.Color(0, 0, 255);
+  int number_of_loops;
+
+  for (int counter = 1; number_of_loops <= 10; counter++) {
+    color_entire_matrix(blue);
+    delay(250);
+    color_entire_matrix(red);
+    delay(250);
+  }
+}
+
+void color_entire_matrix(uint32_t color) {
+  for (int x = 0; x < LED_COUNT; x++) {
+    strip.setPixelColor(x, color);
+  }
+  strip.show();
+}
+
 void display_sound(int board[ROWS][COLS], float dbValue) {
   strip.clear();
  
@@ -305,12 +328,10 @@ int set_cap(int board[ROWS][COLS], int height, uint32_t colors[ROWS]) {
     if (indent > 2) {
       indent = 3;
     }
-    else 
-    {
+    else {
       indent += 1;
     }
   }
-
   return cap_size;
 }
 
@@ -656,7 +677,7 @@ void get_board(int board[ROWS][COLS])
 void read_from_eeprom() {
 
   Serial.println("Searching memory for matrix lower limit value.");
-  if (EEPROM.read(LOWER_DB_LIMIT_ADDR) >= 255) {
+  if (EEPROM.read(LOWER_DB_LIMIT_ADDR) <= 255) {
     Serial.print("Value found! Using value from memory: ");
     lower_db_limit = EEPROM.read(LOWER_DB_LIMIT_ADDR);
     Serial.println(lower_db_limit);
@@ -667,7 +688,7 @@ void read_from_eeprom() {
   }
 
   Serial.println("Searching memory for matrix upper limit value.");
-  if (EEPROM.read(UPPER_DB_LIMIT_ADDR) >= 255) {
+  if (EEPROM.read(UPPER_DB_LIMIT_ADDR) <= 255) {
     Serial.print("Value found! Using value from memory: ");
     upper_db_limit = EEPROM.read(UPPER_DB_LIMIT_ADDR);
     Serial.println(upper_db_limit);
