@@ -23,7 +23,8 @@ Now I have no clue the actual look of the totem, but the running concept is to h
  - [GPS Module](https://www.dfrobot.com/product-1302.html)
  - [SD Card Logging Shield](https://www.velleman.eu/products/view/?id=435522)
  - 10kΩ Potentiometer
- - 330Ω Resistor
+ - 330Ω Resistor x3
+ - 100µF electrolytic capacitor x2
  - [RF Receiver](https://arduinomodules.info/ky-022-infrared-receiver-module/)
  - [Real Time Clock](https://create.arduino.cc/projecthub/MisterBotBreak/how-to-use-a-real-time-clock-module-ds3231-bc90fe)
  - [LCD Panel (16x2)](http://wiki.sunfounder.cc/index.php?title=LCD1602_Module)
@@ -33,3 +34,12 @@ Now I have no clue the actual look of the totem, but the running concept is to h
 
 ## Why is this project so sloppy?
 Yes, I get it.  The parts I've created in Fritzing look rushed and incomplete, the prototype is a little slopyy, etc.  I'm learning.
+
+## Major outstanding issues
+- Do I need larger caps?
+- Is this only able to be powered through the power supply module?  This needs to be tested with a battery.
+- How long can a battery pack power this?
+- Develop a lower power mode?
+- Additional lighting effects would be nice.
+- Get SD card writing once again.  this is important
+- How do we harden this and make it mobile?
