@@ -41,7 +41,7 @@ RTCDateTime dt;
 // LED Panel
 #define LED_PIN 6
 #define LED_COUNT 256
-#define BRIGHTNESS 5
+#define BRIGHTNESS 12
 int upper_db_limit = 90;
 int lower_db_limit = 45;
 #define ROWS 32
@@ -64,11 +64,44 @@ byte colPins[KEY_COLS] = {31,33,35,37}; //connect to the column pinouts of the k
 //initialize an instance of class NewKeypad
 Keypad customKeypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, KEY_ROWS, KEY_COLS); 
 
-
 //EEPROM
 #define LOWER_DB_LIMIT_ADDR 69
 #define UPPER_DB_LIMIT_ADDR 70
 #define CALIBRATION_ADDR 71
+
+class Colour {
+  public: 
+    Colour(byte inRed, byte inGreen, byte inBlue);
+    Colour();
+    void setColour(byte inRed, byte inGreen, byte inBlue);
+    byte getRed(void);
+    byte getGreen(void);
+    byte getBlue(void);
+  
+  private :
+    byte red;
+    byte green;
+    byte blue;
+};
+
+Colour::Colour(byte inRed, byte inGreen, byte inBlue) { 
+  setColour(inRed, inGreen, inBlue); 
+}
+
+Colour::Colour(void) { setColour(0,0,0); }
+
+void Colour::setColour(byte inRed, byte inGreen, byte inBlue) {
+  red = inRed;
+  green = inGreen;
+  blue = inBlue;
+}
+
+byte Colour::getRed(void) { return red; }
+byte Colour::getGreen(void) { return green; }
+byte Colour::getBlue(void) { return blue; }
+
+Colour current_min_colour(0,255,0);
+Colour current_max_colour(255,0,0);
 
 void setup() {
   Serial.begin(9600);
@@ -145,6 +178,37 @@ void loop() {
   smartDelay(DELAY_TIME, dateBuffer, dbValue);
 }
 
+
+void recursion(int min_pos, int max_pos, Colour colours[33]) {
+  if (((max_pos - min_pos) % 2) == 0) {
+        int mid = ((max_pos - min_pos) / 2) + min_pos;
+        colours[mid] = blend(colours[min_pos], colours[max_pos]);
+        recursion(mid, max_pos, colours);
+        recursion(min_pos, mid, colours);
+  }
+}
+   
+Colour blend(Colour min_color, Colour max_color){
+    int r_combined = min_color.getRed() + max_color.getRed();
+    int g_combined = min_color.getGreen() + max_color.getGreen();
+    int b_combined = min_color.getBlue() + max_color.getBlue();
+
+    int x[3] = {r_combined, g_combined, b_combined};
+
+    long my_max = 0;
+    for (int i = 0; i < 3; i++) {
+      if (x[i] > my_max) {
+        my_max = x[i];
+      }
+    }
+
+    int blended_red = (long)r_combined * (long)255 / (long)my_max;
+    int blended_green = (long)g_combined * (long)255 / (long)my_max;
+    int blended_blue = (long)b_combined * (long)255 / (long)my_max;
+
+    return Colour(blended_red, blended_green, blended_blue);
+}
+
 // free RAM check for debugging. SRAM for ATmega328p = 2048Kb.
 int availableMemory() {
     // Use 1024 with ATmega168
@@ -214,6 +278,21 @@ static void smartDelay(unsigned long ms, char dateBuffer[], float dbValue) {
           Serial.println("Flash them police lights!");  
           police_lights();
           break;
+        case 'B':
+          Serial.println("Green -> Red");  
+          current_min_colour.setColour(0,255,0);
+          current_max_colour.setColour(255,0,0);
+          break;
+        case 'C':
+          Serial.println("Blue -> White");  
+          current_min_colour.setColour(0,0,255);
+          current_max_colour.setColour(255,255,255);
+          break;
+        case 'D':
+          Serial.println("Blue -> Red");  
+          current_min_colour.setColour(0,0,255);
+          current_max_colour.setColour(255,0,0);
+          break;
         default: 
           Serial.println(customKey);
       }
@@ -267,9 +346,8 @@ static void smartDelay(unsigned long ms, char dateBuffer[], float dbValue) {
 void police_lights() {
   uint32_t red = strip.Color(255, 0, 0);
   uint32_t blue = strip.Color(0, 0, 255);
-  int number_of_loops;
 
-  for (int counter = 1; number_of_loops <= 10; counter++) {
+  for (int counter = 1; counter <= 10; counter++) {
     color_entire_matrix(blue);
     delay(250);
     color_entire_matrix(red);
@@ -288,22 +366,28 @@ void display_sound(int board[ROWS][COLS], float dbValue) {
   strip.clear();
  
   int height = get_height(dbValue);
+
+  int min_pos = 0;
+  int max_pos = 32;
+
+  Colour colours[33];
+  colours[0] = current_min_colour;
+  colours[32] = current_max_colour;
+
+  recursion(min_pos, max_pos, colours);
   
-  uint32_t colors[ROWS];
-  get_colors(colors);
-  
-  int cap_size = set_cap(board, height, colors);
+  int cap_size = set_cap(board, height, colours);
 
   for (int i = 0; i < height - cap_size; i++) {
-
+    Colour colour = colours[i];
     for (int x = 0; x <= 7; x++) {
-      strip.setPixelColor(board[i][x], colors[i]);
+      strip.setPixelColor(board[i][x], strip.Color(colour.getRed(),colour.getGreen(),colour.getBlue()));
     }
   }
   strip.show(); 
 }
 
-int set_cap(int board[ROWS][COLS], int height, uint32_t colors[ROWS]) {
+int set_cap(int board[ROWS][COLS], int height, Colour colours[33]) {
 
   int cap_size = 2;
   
@@ -320,9 +404,9 @@ int set_cap(int board[ROWS][COLS], int height, uint32_t colors[ROWS]) {
 
   int indent = 1;
   for (int i = height - cap_size; i < height; i++) {
-    
+    Colour colour = colours[i];
     for (int x = 0 + indent; x <= 7 - indent; x++) {
-      strip.setPixelColor(board[i][x], colors[i]);
+      strip.setPixelColor(board[i][x], strip.Color(colour.getRed(),colour.getGreen(),colour.getBlue()));
     }
     
     if (indent > 2) {
@@ -346,41 +430,6 @@ int get_height(float dbValue) {
   
   int height = round((dbValue - (float) lower_db_limit)*( (float) ROWS /( (float) upper_db_limit - (float) lower_db_limit)));
   return height;
-}
-
-void get_colors(uint32_t colors[ROWS]) {
-  colors[0] = strip.Color( 0, 255, 0);
-  colors[1] = strip.Color( 18, 255, 0);
-  colors[2] = strip.Color( 36, 255, 0);
-  colors[3] = strip.Color( 54, 255, 0);
-  colors[4] = strip.Color( 72, 255, 0);
-  colors[5] = strip.Color( 90, 255, 0);
-  colors[6] = strip.Color( 108, 255, 0);
-  colors[7] = strip.Color( 126, 255, 0);
-  colors[8] = strip.Color( 144, 255, 0);
-  colors[9] = strip.Color( 162, 255, 0);
-  colors[10] = strip.Color( 180, 255, 0);
-  colors[11] = strip.Color( 198, 255, 0);
-  colors[12] = strip.Color( 216, 255, 0);
-  colors[13] = strip.Color( 234, 255, 0);
-  colors[14] = strip.Color( 252, 255, 0);
-  colors[15] = strip.Color( 255, 255, 0);
-  colors[16] = strip.Color( 255, 252, 0);
-  colors[17] = strip.Color( 255, 234, 0);
-  colors[18] = strip.Color( 255, 216, 0);
-  colors[19] = strip.Color( 255, 198, 0);
-  colors[20] = strip.Color( 255, 180, 0);
-  colors[21] = strip.Color( 255, 162, 0);
-  colors[22] =  strip.Color( 255, 144, 0);
-  colors[23] =  strip.Color( 255, 126, 0);
-  colors[24] =  strip.Color( 255, 108, 0);
-  colors[25] =  strip.Color( 255, 90, 0);
-  colors[26] =  strip.Color( 255, 72, 0);
-  colors[27] =  strip.Color( 255, 54, 0);
-  colors[28] =  strip.Color( 255, 36, 0);
-  colors[29] =  strip.Color( 255, 18, 0);
-  colors[30] =  strip.Color( 255, 0, 0);
-  colors[31] =  strip.Color( 255, 0, 0);
 }
 
 void get_board(int board[ROWS][COLS])
